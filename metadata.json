@@ -1,0 +1,6 @@
+{
+  "name": "SAS-Siddik Villa",
+  "description": "Expense, Income & Community Management System (EI&CM) for SAS-Siddik Villa 14 Flats, Renters, and Guard.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
