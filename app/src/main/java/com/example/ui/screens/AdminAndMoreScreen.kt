@@ -2,6 +2,7 @@
 
 package com.example.ui.screens
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -24,6 +25,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.model.*
@@ -1141,6 +1143,9 @@ fun CategoriesManagementSection(currentUser: User, viewModel: VillaViewModel, is
 @Composable
 fun UserAndPasswordManagementSection(currentUser: User, viewModel: VillaViewModel, isAuthorizedAdmin: Boolean) {
     val users by viewModel.allUsers.collectAsState()
+    val liveCurrentUser = users.find { it.userId == currentUser.userId } ?: currentUser
+
+    var showChangeOwnPasswordDialog by remember { mutableStateOf(false) }
     var showBulkInitialPasswordDialog by remember { mutableStateOf(false) }
     var selectedUserForReset by remember { mutableStateOf<User?>(null) }
 
@@ -1150,6 +1155,125 @@ fun UserAndPasswordManagementSection(currentUser: User, viewModel: VillaViewMode
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
+        // 1. ALL USERS HAVE RIGHT TO CHANGE OWN PASSWORD CARD
+        item {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("change_own_password_card"),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
+                ),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.4f))
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(44.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(MaterialTheme.colorScheme.primary),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Key,
+                                contentDescription = "Change Password",
+                                tint = MaterialTheme.colorScheme.onPrimary,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                        Spacer(Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Change My Password",
+                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = "${liveCurrentUser.fullName} (${liveCurrentUser.userId}) • ${liveCurrentUser.role.name.replace("_", " ")}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+
+                    Spacer(Modifier.height(10.dp))
+
+                    if (liveCurrentUser.isInitialPassword) {
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = DeficitRed.copy(alpha = 0.15f),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    Icons.Default.Warning,
+                                    contentDescription = null,
+                                    tint = DeficitRed,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(Modifier.width(6.dp))
+                                Text(
+                                    text = "Initial temporary password is in use. Please change to a secure personal password.",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = DeficitRed,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+                        }
+                        Spacer(Modifier.height(10.dp))
+                    } else {
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = SurplusGreen.copy(alpha = 0.15f),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    Icons.Default.CheckCircle,
+                                    contentDescription = null,
+                                    tint = SurplusGreen,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(Modifier.width(6.dp))
+                                Text(
+                                    text = "Your custom secure password is active.",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = SurplusGreen,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                        }
+                        Spacer(Modifier.height(10.dp))
+                    }
+
+                    Button(
+                        onClick = { showChangeOwnPasswordDialog = true },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("change_own_password_btn"),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Icon(Icons.Default.LockReset, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text("Change My Password Now")
+                    }
+                }
+            }
+        }
+
+        // 2. Periodic Initial Password Policy (System Admin Only)
         if (currentUser.role == UserRole.SYSTEM_ADMIN) {
             item {
                 Card(
@@ -1181,15 +1305,20 @@ fun UserAndPasswordManagementSection(currentUser: User, viewModel: VillaViewMode
         item {
             SectionHeader(
                 title = "All Registered Users (${users.size})",
-                subtitle = "Reset password or toggle account access"
+                subtitle = "Manage account passwords and access controls"
             )
         }
 
         items(users, key = { it.userId }) { u ->
+            val isMe = u.userId == liveCurrentUser.userId
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                colors = CardDefaults.cardColors(
+                    containerColor = if (isMe) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.25f)
+                    else MaterialTheme.colorScheme.surface
+                ),
+                border = if (isMe) BorderStroke(1.dp, MaterialTheme.colorScheme.primary) else null
             ) {
                 Row(
                     modifier = Modifier
@@ -1199,7 +1328,28 @@ fun UserAndPasswordManagementSection(currentUser: User, viewModel: VillaViewMode
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text("${u.userId} — ${u.fullName}", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = "${u.userId} — ${u.fullName}",
+                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                            if (isMe) {
+                                Spacer(Modifier.width(6.dp))
+                                Surface(
+                                    shape = RoundedCornerShape(4.dp),
+                                    color = MaterialTheme.colorScheme.primary
+                                ) {
+                                    Text(
+                                        text = "YOU",
+                                        color = MaterialTheme.colorScheme.onPrimary,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp)
+                                    )
+                                }
+                            }
+                        }
                         Text(
                             text = "${u.role.name.replace("_", " ")} ${u.flatId?.let { "• Flat $it" } ?: ""}",
                             style = MaterialTheme.typography.labelSmall,
@@ -1210,11 +1360,22 @@ fun UserAndPasswordManagementSection(currentUser: User, viewModel: VillaViewMode
                         }
                     }
 
-                    if (isAuthorizedAdmin) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (isMe) {
+                            Button(
+                                onClick = { showChangeOwnPasswordDialog = true },
+                                shape = RoundedCornerShape(8.dp),
+                                modifier = Modifier.testTag("change_own_pass_row_btn")
+                            ) {
+                                Icon(Icons.Default.Key, contentDescription = null, modifier = Modifier.size(14.dp))
+                                Spacer(Modifier.width(4.dp))
+                                Text("Change Pass", style = MaterialTheme.typography.labelSmall)
+                            }
+                        } else if (isAuthorizedAdmin) {
                             FilledTonalButton(
                                 onClick = { selectedUserForReset = u },
-                                shape = RoundedCornerShape(8.dp)
+                                shape = RoundedCornerShape(8.dp),
+                                modifier = Modifier.testTag("reset_pass_${u.userId}")
                             ) {
                                 Text("Reset Pass", style = MaterialTheme.typography.labelSmall)
                             }
@@ -1223,6 +1384,185 @@ fun UserAndPasswordManagementSection(currentUser: User, viewModel: VillaViewMode
                 }
             }
         }
+    }
+
+    // Modal: Change My Password (For Any Logged-in User)
+    if (showChangeOwnPasswordDialog) {
+        var currentPasswordAttempt by remember { mutableStateOf("") }
+        var newPassword by remember { mutableStateOf("") }
+        var confirmPassword by remember { mutableStateOf("") }
+        var showOldPass by remember { mutableStateOf(false) }
+        var showNewPass by remember { mutableStateOf(false) }
+        var showConfirmPass by remember { mutableStateOf(false) }
+        var errorMessage by remember { mutableStateOf<String?>(null) }
+        var isSubmitting by remember { mutableStateOf(false) }
+
+        AlertDialog(
+            onDismissRequest = {
+                if (!isSubmitting) showChangeOwnPasswordDialog = false
+            },
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.LockReset,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text("Change My Password", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+                }
+            },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Text(
+                        text = "Account: ${liveCurrentUser.fullName} (${liveCurrentUser.userId})",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.SemiBold
+                    )
+
+                    if (errorMessage != null) {
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = MaterialTheme.colorScheme.errorContainer,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = errorMessage ?: "",
+                                color = MaterialTheme.colorScheme.onErrorContainer,
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.padding(8.dp)
+                            )
+                        }
+                    }
+
+                    OutlinedTextField(
+                        value = currentPasswordAttempt,
+                        onValueChange = {
+                            currentPasswordAttempt = it
+                            errorMessage = null
+                        },
+                        label = { Text("Current Password") },
+                        placeholder = { Text(if (liveCurrentUser.isInitialPassword) "Default was 123456" else "Enter current password") },
+                        leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) },
+                        trailingIcon = {
+                            IconButton(onClick = { showOldPass = !showOldPass }) {
+                                Icon(
+                                    imageVector = if (showOldPass) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                                    contentDescription = null
+                                )
+                            }
+                        },
+                        visualTransformation = if (showOldPass) VisualTransformation.None else PasswordVisualTransformation(),
+                        singleLine = true,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("current_password_input"),
+                        shape = RoundedCornerShape(10.dp)
+                    )
+
+                    OutlinedTextField(
+                        value = newPassword,
+                        onValueChange = {
+                            newPassword = it
+                            errorMessage = null
+                        },
+                        label = { Text("New Password") },
+                        placeholder = { Text("At least 6 characters") },
+                        leadingIcon = { Icon(Icons.Default.Key, contentDescription = null) },
+                        trailingIcon = {
+                            IconButton(onClick = { showNewPass = !showNewPass }) {
+                                Icon(
+                                    imageVector = if (showNewPass) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                                    contentDescription = null
+                                )
+                            }
+                        },
+                        visualTransformation = if (showNewPass) VisualTransformation.None else PasswordVisualTransformation(),
+                        singleLine = true,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("new_password_input"),
+                        shape = RoundedCornerShape(10.dp)
+                    )
+
+                    OutlinedTextField(
+                        value = confirmPassword,
+                        onValueChange = {
+                            confirmPassword = it
+                            errorMessage = null
+                        },
+                        label = { Text("Confirm New Password") },
+                        placeholder = { Text("Re-enter new password") },
+                        leadingIcon = { Icon(Icons.Default.Key, contentDescription = null) },
+                        trailingIcon = {
+                            IconButton(onClick = { showConfirmPass = !showConfirmPass }) {
+                                Icon(
+                                    imageVector = if (showConfirmPass) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                                    contentDescription = null
+                                )
+                            }
+                        },
+                        visualTransformation = if (showConfirmPass) VisualTransformation.None else PasswordVisualTransformation(),
+                        singleLine = true,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("confirm_new_password_input"),
+                        shape = RoundedCornerShape(10.dp)
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (currentPasswordAttempt.isBlank()) {
+                            errorMessage = "Please enter your current password"
+                            return@Button
+                        }
+                        if (newPassword.length < 6) {
+                            errorMessage = "New password must be at least 6 characters"
+                            return@Button
+                        }
+                        if (newPassword != confirmPassword) {
+                            errorMessage = "New password and confirmation do not match"
+                            return@Button
+                        }
+                        isSubmitting = true
+                        viewModel.changeOwnPassword(
+                            userId = liveCurrentUser.userId,
+                            currentAttempt = currentPasswordAttempt,
+                            currentHash = liveCurrentUser.passwordHash,
+                            newPassword = newPassword,
+                            onResult = { success, msg ->
+                                isSubmitting = false
+                                if (success) {
+                                    showChangeOwnPasswordDialog = false
+                                } else {
+                                    errorMessage = msg
+                                }
+                            }
+                        )
+                    },
+                    enabled = !isSubmitting,
+                    modifier = Modifier.testTag("submit_change_own_password_btn")
+                ) {
+                    Text(if (isSubmitting) "Updating..." else "Update Password")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showChangeOwnPasswordDialog = false },
+                    enabled = !isSubmitting
+                ) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 
     if (showBulkInitialPasswordDialog) {

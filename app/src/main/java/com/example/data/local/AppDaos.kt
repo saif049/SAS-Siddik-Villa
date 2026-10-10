@@ -197,6 +197,9 @@ interface BillDao {
     @Query("SELECT * FROM gas_bills ORDER BY billingMonth DESC, flatId ASC")
     fun getAllGasBills(): Flow<List<GasBill>>
 
+    @Query("SELECT * FROM gas_bills WHERE id = :id LIMIT 1")
+    suspend fun getGasBillById(id: Long): GasBill?
+
     @Query("SELECT * FROM gas_bills WHERE flatId = :flatId ORDER BY billingMonth DESC")
     fun getGasBillsForFlat(flatId: String): Flow<List<GasBill>>
 

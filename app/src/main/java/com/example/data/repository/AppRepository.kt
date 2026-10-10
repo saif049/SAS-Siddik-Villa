@@ -500,7 +500,24 @@ class AppRepository(private val database: AppDatabase) {
 
     suspend fun markGasBillPaid(billId: Long, paymentRef: String, actorUserId: String): Result<Unit> = withContext(Dispatchers.IO) {
         val today = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).format(java.util.Date())
+        val bill = billDao.getGasBillById(billId)
         billDao.updateGasBillPayment(billId, "Paid", today, paymentRef)
+        if (bill != null) {
+            val income = Income(
+                date = today,
+                amount = bill.amount,
+                incomeType = "FLAT_INCOME",
+                payerUserId = bill.userId,
+                payerName = "Flat ${bill.flatId} Gas Bill",
+                flatId = bill.flatId,
+                category = "Gas Charge",
+                subcategory = "Monthly Titas Gas",
+                paymentMethod = "Cash",
+                referenceNo = paymentRef,
+                remarks = "Gas bill payment for month ${bill.billingMonth}"
+            )
+            financialDao.insertIncome(income)
+        }
         logAudit(actorUserId, "GAS_BILL_CHANGE", "BILL", billId.toString(), "Marked gas bill #$billId as Paid (Ref: $paymentRef)")
         Result.success(Unit)
     }

@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.data.local.AppDatabase
 import com.example.data.model.*
 import com.example.data.repository.AppRepository
+import com.example.data.util.SecurityUtils
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
@@ -418,6 +419,38 @@ class VillaViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             repository.resetPasswordByAdmin(actorUserId, targetUserId, newPass, forceInitialChange)
             showToast("Password reset for $targetUserId (Temporary pass: $newPass)")
+        }
+    }
+
+    fun changeOwnPassword(
+        userId: String,
+        currentAttempt: String,
+        currentHash: String,
+        newPassword: String,
+        onResult: (Boolean, String) -> Unit = { _, _ -> }
+    ) {
+        if (!SecurityUtils.verifyPassword(currentAttempt, currentHash)) {
+            val err = "Current password does not match your existing password."
+            showToast(err)
+            onResult(false, err)
+            return
+        }
+        if (newPassword.length < 6) {
+            val err = "New password must be at least 6 characters."
+            showToast(err)
+            onResult(false, err)
+            return
+        }
+        viewModelScope.launch {
+            val result = repository.changePassword(userId, newPassword)
+            if (result.isSuccess) {
+                showToast("Password updated successfully!")
+                onResult(true, "Password updated successfully!")
+            } else {
+                val error = result.exceptionOrNull()?.message ?: "Failed to update password"
+                showToast(error)
+                onResult(false, error)
+            }
         }
     }
 
